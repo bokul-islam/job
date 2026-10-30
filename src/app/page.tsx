@@ -28,29 +28,67 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   education: <GraduationCap className="h-5 w-5" />,
 };
 
-export default async function LandingPage() {
-  const [featured, categoryRows, categories, seekerPlans, employerPlans, [jobCount], [userCount], [appCount], [companyCount]] = await Promise.all([
-    featuredJobs(6),
-    categoryCounts(),
-    db.select().from(jobCategories).orderBy(jobCategories.name),
-    db.select().from(membershipPlans).where(eq(membershipPlans.audience, "job_seeker")).orderBy(membershipPlans.sortOrder),
-    db.select().from(membershipPlans).where(eq(membershipPlans.audience, "employer")).orderBy(membershipPlans.sortOrder),
-    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(eq(jobs.status, "active")),
-    db.select({ count: sql<number>`count(*)::int` }).from(users),
-    db.select({ count: sql<number>`count(*)::int` }).from(applications),
-    db.select({ count: sql<number>`count(distinct ${jobs.companyId})::int` }).from(jobs),
-  ]);
+async function safeDbLoad() {
+  try {
+    const [featured, categoryRows, categories, seekerPlans, employerPlans, jobCountRows, userCountRows, appCountRows, companyCountRows] = await Promise.all([
+      featuredJobs(6),
+      categoryCounts(),
+      db.select().from(jobCategories).orderBy(jobCategories.name),
+      db.select().from(membershipPlans).where(eq(membershipPlans.audience, "job_seeker")).orderBy(membershipPlans.sortOrder),
+      db.select().from(membershipPlans).where(eq(membershipPlans.audience, "employer")).orderBy(membershipPlans.sortOrder),
+      db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(eq(jobs.status, "active")),
+      db.select({ count: sql<number>`count(*)::int` }).from(users),
+      db.select({ count: sql<number>`count(*)::int` }).from(applications),
+      db.select({ count: sql<number>`count(distinct ${jobs.companyId})::int` }).from(jobs),
+    ]);
+    return {
+      ok: true as const,
+      featured, categoryRows, categories, seekerPlans, employerPlans,
+      stats: [
+        { label: "Live job posts", value: jobCountRows[0]?.count ?? 0 },
+        { label: "Registered members", value: userCountRows[0]?.count ?? 0 },
+        { label: "Applications tracked", value: appCountRows[0]?.count ?? 0 },
+        { label: "Hiring companies", value: companyCountRows[0]?.count ?? 0 },
+      ],
+    };
+  } catch (err) {
+    console.error("[landing] DB load failed:", err);
+    return {
+      ok: false as const,
+      featured: [] as Awaited<ReturnType<typeof featuredJobs>>,
+      categoryRows: [] as Awaited<ReturnType<typeof categoryCounts>>,
+      categories: [] as { id: string; name: string; slug: string; icon: string | null; createdAt: Date }[],
+      seekerPlans: [] as typeof membershipPlans.$inferSelect[],
+      employerPlans: [] as typeof membershipPlans.$inferSelect[],
+      stats: [
+        { label: "Live job posts", value: 0 },
+        { label: "Registered members", value: 0 },
+        { label: "Applications tracked", value: 0 },
+        { label: "Hiring companies", value: 0 },
+      ],
+    };
+  }
+}
 
-  const stats = [
-    { label: "Live job posts", value: jobCount?.count ?? 0 },
-    { label: "Registered members", value: userCount?.count ?? 0 },
-    { label: "Applications tracked", value: appCount?.count ?? 0 },
-    { label: "Hiring companies", value: companyCount?.count ?? 0 },
-  ];
+export default async function LandingPage() {
+  const { ok, featured, categoryRows, categories, seekerPlans, employerPlans, stats } = await safeDbLoad();
 
   return (
     <>
       <SiteHeader />
+
+      {!ok && (
+        <div className="border-b border-amber-300 bg-amber-50 px-4 py-4 text-center text-sm text-amber-900">
+          <strong>⚠️ Database not connected.</strong>{" "}
+          Set <code className="rounded bg-white px-1 py-0.5 text-xs font-mono font-bold">DATABASE_URL</code> in
+          Vercel → Settings → Environment Variables, run{" "}
+          <code className="rounded bg-white px-1 py-0.5 text-xs font-mono font-bold">npx drizzle-kit push</code>{" "}
+          against your Supabase database, then redeploy.{" "}
+          <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-bold">
+            Create a free Supabase project →
+          </a>
+        </div>
+      )}
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-brand-950">

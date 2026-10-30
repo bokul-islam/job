@@ -7,8 +7,14 @@ export const metadata = { title: "Create account" };
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
-  const user = await getSessionUser();
-  if (user) redirect("/dashboard");
+
+  try {
+    const user = await getSessionUser();
+    if (user) redirect("/dashboard");
+  } catch {
+    /* DB not available — show register page, action will handle errors */
+  }
+
   const role = sp.role === "employer" ? "employer" : "job_seeker";
 
   return (

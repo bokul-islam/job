@@ -8,8 +8,14 @@ export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
-  const user = await getSessionUser();
-  if (user) redirect("/dashboard");
+
+  // If DB is down, still show the login form — the submit action will surface the real error
+  try {
+    const user = await getSessionUser();
+    if (user) redirect("/dashboard");
+  } catch {
+    /* DB not available — show login page anyway, action will handle the error */
+  }
 
   return (
     <div>

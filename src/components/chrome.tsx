@@ -19,7 +19,8 @@ export function Logo({ light }: { light?: boolean }) {
 }
 
 export async function SiteHeader() {
-  const user = await getSessionUser();
+  let user = null;
+  try { user = await getSessionUser(); } catch { /* DB not available yet */ }
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200/70 bg-white/85 backdrop-blur-lg">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
