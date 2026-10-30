@@ -64,7 +64,18 @@ npm run dev
    - `pg` connections need the Hyperdrive binding or Supabase's pgbouncer URL.
 5. **Resend**: add `RESEND_API_KEY` + verify your sending domain.
 
-Vercel may be used for hobby/demo deployments; per Vercel's terms the free Hobby plan does not cover commercial production use.
+### Vercel (personal/demo)
+
+Vercel works fine for personal demo deployments:
+
+1. Import the repo at [vercel.com/new](https://vercel.com/new) — the build succeeds **without** env vars (the DB client initializes lazily).
+2. Before the app can actually serve data, add environment variables in **Project → Settings → Environment Variables**:
+   - `DATABASE_URL` — Supabase pooler string, e.g. `postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres`
+   - `UPLOAD_SIGNING_SECRET` — any long random string
+   - optionally `RESEND_API_KEY`, `R2_*` (uploads need R2 on Vercel — serverless filesystems are read-only), `SSLCZ_*`, `BKASH_*`
+3. **Deployments → Redeploy** to pick up the variables.
+
+Per Vercel's terms, the free Hobby plan does not cover commercial production use — use Cloudflare Workers (steps above) for that.
 
 ### Free-tier limits to respect
 
